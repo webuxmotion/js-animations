@@ -1,0 +1,12 @@
+export const ROTATE_SPEED = 0.002;
+export const PAN_SPEED = 1;
+export const ZOOM_SPEED = 0.01;
+export const GESTURE_TIMEOUT_MS = 120;
+export const GRID_SIZE = 400;
+export const GRID_STEP = 50;
+export const ZOOM_MIN = 0.05;
+export const ZOOM_MAX = 20;
+export const DRAG_ROTATE_SPEED = 0.005;
+export const COLOR_XY = "#4a90e2";
+export const COLOR_XZ = "#e24a4a";
+export const COLOR_YZ = "#4ae28a";

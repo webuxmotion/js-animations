@@ -3,16 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>DopamineCAD</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <button id="sketch">Draw Sketch</button>
-
-    <button id="line">Draw Line</button>
-
+    <div class="ui-bar">
+      <select id="controls">
+        <option value="style2">Dopamine Style</option>
+        <option value="style3">Reversal Pan</option>
+        <option value="trackpad">Trackpad</option>
+      </select>
+      <button id="theme-toggle">Light</button>
+      <button id="record">Record</button>
+    </div>
     <canvas></canvas>
-
     <script type="module" src="./app.js"></script>
   </body>
 </html>
