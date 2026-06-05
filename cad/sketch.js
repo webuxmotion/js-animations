@@ -2,7 +2,7 @@ import { drawLine3D } from "./renderer.js";
 import { transform, project } from "./math3d.js";
 
 const PLANE_COLOR = { xy: '#4a90e2', xz: '#e24a4a', yz: '#4ae28a' };
-const SNAP_PX = 14; // screen-space pixels to snap-to-close
+const SNAP_PX = 14;
 
 function unproject(sx, sy, state, plane) {
   const { zoom, panX, panY, width, height, rotX, rotY } = state;
@@ -37,19 +37,78 @@ function toScreen(pt, state) {
   return project(t, state.zoom, state.panX, state.panY, state.width, state.height);
 }
 
+function circlePoints(center, edge, plane, n = 64) {
+  let r;
+  if (plane === 'xy')      r = Math.hypot(edge.x - center.x, edge.y - center.y);
+  else if (plane === 'xz') r = Math.hypot(edge.x - center.x, edge.z - center.z);
+  else                     r = Math.hypot(edge.y - center.y, edge.z - center.z);
+
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const cs = Math.cos(a), sn = Math.sin(a);
+    if (plane === 'xy')      pts.push({ x: center.x + r * cs, y: center.y + r * sn, z: center.z });
+    else if (plane === 'xz') pts.push({ x: center.x + r * cs, y: center.y,          z: center.z + r * sn });
+    else                     pts.push({ x: center.x,           y: center.y + r * sn, z: center.z + r * cs });
+  }
+  return pts;
+}
+
+function rectPoints(p1, p2, plane) {
+  if (plane === 'xy') return [
+    { x: p1.x, y: p1.y, z: p1.z }, { x: p2.x, y: p1.y, z: p1.z },
+    { x: p2.x, y: p2.y, z: p1.z }, { x: p1.x, y: p2.y, z: p1.z },
+  ];
+  if (plane === 'xz') return [
+    { x: p1.x, y: p1.y, z: p1.z }, { x: p2.x, y: p1.y, z: p1.z },
+    { x: p2.x, y: p1.y, z: p2.z }, { x: p1.x, y: p1.y, z: p2.z },
+  ];
+  return [
+    { x: p1.x, y: p1.y, z: p1.z }, { x: p1.x, y: p2.y, z: p1.z },
+    { x: p1.x, y: p2.y, z: p2.z }, { x: p1.x, y: p1.y, z: p2.z },
+  ];
+}
+
+function centerRectPoints(center, corner, plane) {
+  const dx = corner.x - center.x;
+  const dy = corner.y - center.y;
+  const dz = corner.z - center.z;
+  if (plane === 'xy') return [
+    { x: center.x - dx, y: center.y - dy, z: center.z },
+    { x: center.x + dx, y: center.y - dy, z: center.z },
+    { x: center.x + dx, y: center.y + dy, z: center.z },
+    { x: center.x - dx, y: center.y + dy, z: center.z },
+  ];
+  if (plane === 'xz') return [
+    { x: center.x - dx, y: center.y, z: center.z - dz },
+    { x: center.x + dx, y: center.y, z: center.z - dz },
+    { x: center.x + dx, y: center.y, z: center.z + dz },
+    { x: center.x - dx, y: center.y, z: center.z + dz },
+  ];
+  return [
+    { x: center.x, y: center.y - dy, z: center.z - dz },
+    { x: center.x, y: center.y + dy, z: center.z - dz },
+    { x: center.x, y: center.y + dy, z: center.z + dz },
+    { x: center.x, y: center.y - dy, z: center.z + dz },
+  ];
+}
+
 export function createSketch() {
   let active = false;
   let plane  = null;
-  let paths  = [];       // { plane, points[], closed }
-  let activePath = null; // { plane, points[] } — in-progress
+  let paths  = [];
+  let activePath = null;
   let previewEnd = null;
-  let snapResult = null; // { type, pt }
+  let snapResult = null;
   let mouseDownPos = null;
+
+  let toolMode = 'polyline';
+  let firstPt  = null;
 
   // Edit mode
   let editingPath    = null;
   let editHoveredIdx = -1;
-  let editDrag       = null; // { idx }
+  let editDrag       = null;
 
   let _canvas = null, _state = null, _onChange = null;
 
@@ -83,7 +142,6 @@ export function createSketch() {
     _onChange?.();
   }
 
-  // Capture-phase handler — intercepts mousedown before camera when editing
   function onMouseDownCapture(e) {
     if (!editingPath) return;
     const pos = getPos(e);
@@ -94,16 +152,14 @@ export function createSketch() {
     }
   }
 
-  // Returns { type: 'close'|'point', pt } or null
   function findSnap(mousePos) {
-    // Snap-to-close first (highest priority)
-    if (activePath && activePath.points.length >= 2) {
+    if (toolMode === 'polyline' && activePath && activePath.points.length >= 2) {
       const s = toScreen(activePath.points[0], _state);
       if (Math.hypot(mousePos.x - s.x, mousePos.y - s.y) < SNAP_PX)
         return { type: 'close', pt: activePath.points[0] };
     }
-    // Snap to any existing point on this plane
     const candidates = [
+      ...(firstPt ? [firstPt] : []),
       ...(activePath ? activePath.points.slice(1) : []),
       ...paths.filter(p => p.plane === plane).flatMap(p => p.points),
     ];
@@ -142,10 +198,8 @@ export function createSketch() {
     }
     if (!active || !plane) return;
     const pos = getPos(e);
-    snapResult = activePath ? findSnap(pos) : null;
-    previewEnd = snapResult
-      ? snapResult.pt
-      : unproject(pos.x, pos.y, _state, plane);
+    snapResult = findSnap(pos);
+    previewEnd = snapResult ? snapResult.pt : unproject(pos.x, pos.y, _state, plane);
   }
 
   function onMouseUp(e) {
@@ -156,17 +210,57 @@ export function createSketch() {
     mouseDownPos = null;
     if (dragged) return;
 
-    if (snapResult?.type === 'close') { commitClose(); return; }
-
     const pt = snapResult ? { ...snapResult.pt } : unproject(pos.x, pos.y, _state, plane);
     if (!pt) return;
 
-    if (!activePath) {
-      activePath = { plane, points: [{ ...pt }] };
-    } else {
-      activePath.points.push({ ...pt });
+    if (toolMode === 'polyline') {
+      if (snapResult?.type === 'close') { commitClose(); return; }
+      if (!activePath) {
+        activePath = { plane, points: [{ ...pt }] };
+      } else {
+        activePath.points.push({ ...pt });
+      }
+      _onChange?.();
+      return;
     }
-    _onChange?.();
+
+    // Two-click tools: first click stores anchor
+    if (!firstPt) {
+      firstPt = { ...pt };
+      _onChange?.();
+      return;
+    }
+
+    // Second click: commit the shape
+    const p1 = firstPt;
+    const p2 = { ...pt };
+    firstPt = null;
+    previewEnd = null;
+    snapResult = null;
+
+    let points, closed;
+    if (toolMode === 'line') {
+      points = [p1, p2];
+      closed = false;
+    } else if (toolMode === 'centerLine') {
+      const mirror = { x: 2 * p1.x - p2.x, y: 2 * p1.y - p2.y, z: 2 * p1.z - p2.z };
+      points = [p2, mirror];
+      closed = false;
+    } else if (toolMode === 'circle') {
+      points = circlePoints(p1, p2, plane);
+      closed = true;
+    } else if (toolMode === 'rect') {
+      points = rectPoints(p1, p2, plane);
+      closed = true;
+    } else if (toolMode === 'centerRect') {
+      points = centerRectPoints(p1, p2, plane);
+      closed = true;
+    }
+
+    if (points) {
+      paths.push({ plane, points, closed, visible: true });
+      _onChange?.();
+    }
   }
 
   function onKeyDown(e) {
@@ -174,6 +268,7 @@ export function createSketch() {
       if (editingPath) { stopEdit(); return; }
       if (!active) return;
       activePath = null;
+      firstPt = null;
       previewEnd = null;
       snapResult = null;
       _onChange?.();
@@ -182,7 +277,10 @@ export function createSketch() {
 
   function setActive(val) {
     active = val;
-    if (!val) { plane = null; activePath = null; previewEnd = null; snapResult = null; mouseDownPos = null; }
+    if (!val) {
+      plane = null; activePath = null; previewEnd = null; snapResult = null;
+      mouseDownPos = null; firstPt = null; toolMode = 'polyline';
+    }
     if (_canvas) _canvas.style.cursor = (val && plane) ? 'crosshair' : '';
     _onChange?.();
   }
@@ -190,9 +288,19 @@ export function createSketch() {
   function selectPlane(p) {
     plane = p;
     activePath = null;
+    firstPt = null;
     previewEnd = null;
     snapResult = null;
     if (_canvas) _canvas.style.cursor = (active && plane) ? 'crosshair' : '';
+    _onChange?.();
+  }
+
+  function setTool(mode) {
+    toolMode = mode;
+    firstPt = null;
+    activePath = null;
+    previewEnd = null;
+    snapResult = null;
     _onChange?.();
   }
 
@@ -203,6 +311,44 @@ export function createSketch() {
     canvasEl.addEventListener('mousemove', onMouseMove);
     canvasEl.addEventListener('mouseup', onMouseUp);
     window.addEventListener('keydown', onKeyDown);
+  }
+
+  function drawDot(ctx, pt, state, color, r = 4) {
+    const s = toScreen(pt, state);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function drawPreviewShape(ctx, state) {
+    if (!firstPt || !previewEnd) return;
+    const c = PLANE_COLOR[plane];
+
+    if (toolMode === 'line') {
+      drawLine3D(ctx, firstPt, previewEnd, state, c + '70');
+      drawDot(ctx, firstPt, state, c);
+    } else if (toolMode === 'centerLine') {
+      const mirror = { x: 2 * firstPt.x - previewEnd.x, y: 2 * firstPt.y - previewEnd.y, z: 2 * firstPt.z - previewEnd.z };
+      drawLine3D(ctx, previewEnd, mirror, state, c + '70');
+      drawDot(ctx, firstPt, state, c + 'cc', 3);
+    } else if (toolMode === 'circle') {
+      const pts = circlePoints(firstPt, previewEnd, plane);
+      for (let i = 0; i < pts.length; i++)
+        drawLine3D(ctx, pts[i], pts[(i + 1) % pts.length], state, c + '70');
+      drawLine3D(ctx, firstPt, previewEnd, state, c + '38');
+      drawDot(ctx, firstPt, state, c);
+    } else if (toolMode === 'rect') {
+      const pts = rectPoints(firstPt, previewEnd, plane);
+      for (let i = 0; i < pts.length; i++)
+        drawLine3D(ctx, pts[i], pts[(i + 1) % pts.length], state, c + '70');
+      drawDot(ctx, firstPt, state, c);
+    } else if (toolMode === 'centerRect') {
+      const pts = centerRectPoints(firstPt, previewEnd, plane);
+      for (let i = 0; i < pts.length; i++)
+        drawLine3D(ctx, pts[i], pts[(i + 1) % pts.length], state, c + '70');
+      drawDot(ctx, firstPt, state, c + 'cc', 3);
+    }
   }
 
   function draw(ctx, state) {
@@ -232,20 +378,23 @@ export function createSketch() {
         drawLine3D(ctx, path.points[path.points.length - 1], path.points[0], state, c);
     }
 
-    if (!activePath) return;
+    if (!active || !plane) return;
     const c = PLANE_COLOR[plane];
 
-    // Committed edges of active path
-    for (let i = 0; i < activePath.points.length - 1; i++)
-      drawLine3D(ctx, activePath.points[i], activePath.points[i + 1], state, c);
-
-    // Preview edge
-    if (previewEnd) {
-      const last = activePath.points[activePath.points.length - 1];
-      drawLine3D(ctx, last, previewEnd, state, snapResult ? c : c + '70');
+    // Polyline: in-progress edges and preview
+    if (toolMode === 'polyline' && activePath) {
+      for (let i = 0; i < activePath.points.length - 1; i++)
+        drawLine3D(ctx, activePath.points[i], activePath.points[i + 1], state, c);
+      if (previewEnd) {
+        const last = activePath.points[activePath.points.length - 1];
+        drawLine3D(ctx, last, previewEnd, state, snapResult ? c : c + '70');
+      }
     }
 
-    // Snap indicator circle
+    // Two-click tool preview shape
+    if (toolMode !== 'polyline') drawPreviewShape(ctx, state);
+
+    // Snap indicator
     if (snapResult) {
       const s = toScreen(snapResult.pt, state);
       ctx.beginPath();
@@ -257,13 +406,15 @@ export function createSketch() {
   }
 
   return {
-    bind, draw, setActive, selectPlane, startEdit,
+    bind, draw, setActive, selectPlane, startEdit, setTool,
     get active()      { return active; },
     get plane()       { return plane; },
     get hasPath()     { return !!activePath; },
     get canClose()    { return !!(activePath && activePath.points.length >= 3); },
     get paths()       { return paths; },
     get editingPath() { return editingPath; },
+    get toolMode()    { return toolMode; },
+    get hasFirstPt()  { return !!firstPt; },
     setPathVisible(idx, val) { if (paths[idx]) { paths[idx].visible = val; } },
   };
 }

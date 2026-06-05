@@ -8,13 +8,23 @@
   </head>
   <body>
     <div class="ui-bar">
-      <select id="controls">
-        <option value="trackpad">Trackpad</option>
-        <option value="style2">Dopamine Style</option>
-        <option value="style3">Reversal Pan</option>
-      </select>
-      <button id="sketch">Sketch</button>
-      <button id="extrude">Extrude</button>
+      <div class="ui-row">
+        <select id="controls">
+          <option value="trackpad">Trackpad</option>
+          <option value="style2">Dopamine Style</option>
+          <option value="style3">Reversal Pan</option>
+        </select>
+        <button id="sketch">Sketch</button>
+        <button id="extrude">Extrude</button>
+      </div>
+      <div class="sketch-toolbar" id="sketch-toolbar">
+        <button class="tool-btn" data-tool="polyline">Polyline</button>
+        <button class="tool-btn" data-tool="line">Line</button>
+        <button class="tool-btn" data-tool="centerLine">Ctr Line</button>
+        <button class="tool-btn" data-tool="circle">Circle</button>
+        <button class="tool-btn" data-tool="rect">Rect</button>
+        <button class="tool-btn" data-tool="centerRect">Ctr Rect</button>
+      </div>
     </div>
     <div class="plane-tree">
       <div id="sketch-hint" class="sketch-hint"></div>

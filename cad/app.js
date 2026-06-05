@@ -179,11 +179,26 @@ function refreshTree() {
 const sketch = createSketch();
 const sketchBtn = document.getElementById("sketch");
 const sketchHint = document.getElementById("sketch-hint");
+const sketchToolbar = document.getElementById("sketch-toolbar");
+
+const TOOL_HINTS = {
+  polyline:   ["Click to place first point", "Click to add points · Esc to cancel"],
+  line:       ["Click to place start point", "Click to place end point"],
+  centerLine: ["Click to place center point", "Click to set length"],
+  circle:     ["Click to place center", "Click to set radius"],
+  rect:       ["Click first corner", "Click opposite corner"],
+  centerRect: ["Click to place center", "Click to set size"],
+};
 
 function updateSketchUI() {
   refreshTree();
   sketchBtn.classList.toggle("active", sketch.active);
   sketchBtn.textContent = sketch.active ? "Stop" : "Sketch";
+
+  sketchToolbar.style.display = sketch.active ? 'flex' : 'none';
+  sketchToolbar.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tool === sketch.toolMode);
+  });
 
   document.querySelectorAll('.plane-item[data-plane]').forEach(el => {
     el.classList.toggle('sketch-target', sketch.active && el.dataset.plane === sketch.plane);
@@ -197,14 +212,24 @@ function updateSketchUI() {
     sketchHint.textContent = "";
   } else if (!sketch.plane) {
     sketchHint.textContent = "Click a plane to start";
-  } else if (!sketch.hasPath) {
-    sketchHint.textContent = "Click to place first point";
-  } else if (sketch.canClose) {
-    sketchHint.textContent = "Click · hover start to close · Esc to cancel";
   } else {
-    sketchHint.textContent = "Click to add points · Esc to cancel";
+    const hints = TOOL_HINTS[sketch.toolMode] ?? TOOL_HINTS.polyline;
+    if (sketch.toolMode === 'polyline') {
+      if (!sketch.hasPath)       sketchHint.textContent = hints[0];
+      else if (sketch.canClose)  sketchHint.textContent = "Click · hover start to close · Esc to cancel";
+      else                       sketchHint.textContent = hints[1];
+    } else {
+      sketchHint.textContent = sketch.hasFirstPt ? hints[1] : hints[0];
+    }
   }
 }
+
+sketchToolbar.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    sketch.setTool(btn.dataset.tool);
+    updateSketchUI();
+  });
+});
 
 sketchBtn.addEventListener("click", () => {
   if (!sketch.active && extrude.active) { extrude.setActive(false); updateExtrudeUI(); }
