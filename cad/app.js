@@ -1,8 +1,8 @@
 import { createMouseTracker } from "../mouse.js";
 import { createCanvas } from "../canvas.js";
 import { createCamera } from "./camera.js";
-import { drawGridPlane, drawPlaneIntersections, drawLine3D, highlightPlane } from "./renderer.js";
-import { drawBox, drawPyramid, drawSphere, highlightBox, highlightPyramid, highlightSphere } from "./shapes.js";
+import { drawGridPlane, drawPlaneIntersections, drawLine3D, highlightPlane, hitTestPlane } from "./renderer.js";
+import { drawBox, drawPyramid, drawSphere, highlightBox, highlightPyramid, highlightSphere, hitTestBox, hitTestPyramid, hitTestSphere } from "./shapes.js";
 import * as trackpad from "./controls/trackpad.js";
 import * as style2 from "./controls/style2.js";
 import * as style3 from "./controls/style3.js";
@@ -296,6 +296,31 @@ document.querySelectorAll('.plane-item').forEach(el => {
   });
 });
 
+function getCanvasPos(e) {
+  const r = canvasEl.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+canvasEl.addEventListener('click', (e) => {
+  if (!sketch.active || sketch.plane) return;
+  const { x, y } = getCanvasPos(e);
+  const plane = hitTestPlane(x, y, camera.state, planeVisible);
+  if (plane) {
+    sketch.selectPlane(plane);
+    updateSketchUI();
+  }
+});
+
+canvasEl.addEventListener('dblclick', (e) => {
+  const { x, y } = getCanvasPos(e);
+  const plane = hitTestPlane(x, y, camera.state, planeVisible);
+  if (plane) {
+    document.querySelectorAll('.plane-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll(`.plane-item[data-plane="${plane}"]`).forEach(el => el.classList.add('active'));
+    snapToPlane(plane);
+  }
+});
+
 function easeOut(t) { return 1 - (1 - t) * (1 - t); }
 
 function tickSnap() {
@@ -322,6 +347,28 @@ function loop() {
 
   sketch.draw(ctx, camera.state);
   extrude.draw(ctx, camera.state);
+
+  let canvasHover = null;
+  if (!treeHovered) {
+    const s = camera.state;
+    if      (objVisible.box     && hitTestBox(mouse.x, mouse.y, 150, -70, 150, 140, s))       canvasHover = { type: 'object', data: 'box' };
+    else if (objVisible.pyramid && hitTestPyramid(mouse.x, mouse.y, -150, 0, -150, 130, 170, s)) canvasHover = { type: 'object', data: 'pyramid' };
+    else if (objVisible.sphere  && hitTestSphere(mouse.x, mouse.y, 150, -95, -150, 95, s))    canvasHover = { type: 'object', data: 'sphere' };
+    if (!canvasHover) {
+      const plane = hitTestPlane(mouse.x, mouse.y, s, planeVisible);
+      if (plane) canvasHover = { type: 'plane', data: plane };
+    }
+  }
+  if (canvasHover) {
+    const s = camera.state;
+    if (canvasHover.type === 'plane') {
+      highlightPlane(ctx, canvasHover.data, s);
+    } else {
+      if (canvasHover.data === 'box')     highlightBox(ctx, 150, -70, 150, 140, s);
+      if (canvasHover.data === 'pyramid') highlightPyramid(ctx, -150, 0, -150, 130, 170, s);
+      if (canvasHover.data === 'sphere')  highlightSphere(ctx, 150, -95, -150, 95, s);
+    }
+  }
 
   if (treeHovered) {
     const s = camera.state;

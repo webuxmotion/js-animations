@@ -65,12 +65,22 @@ export function createExtrude(sketch) {
     return sketch.paths.filter(p => p.closed && p.points.length >= 3);
   }
 
+  function polygonArea(pts) {
+    let a = 0;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++)
+      a += (pts[j].x + pts[i].x) * (pts[j].y - pts[i].y);
+    return Math.abs(a) / 2;
+  }
+
   function pathAt(pos) {
+    let best = null, bestArea = Infinity;
     for (const path of closedPaths()) {
       const pts = path.points.map(p => toScreen(p, _state));
-      if (pointInPolygon(pos.x, pos.y, pts)) return path;
+      if (!pointInPolygon(pos.x, pos.y, pts)) continue;
+      const area = polygonArea(pts);
+      if (area < bestArea) { best = path; bestArea = area; }
     }
-    return null;
+    return best;
   }
 
   function extrusionOf(path) {

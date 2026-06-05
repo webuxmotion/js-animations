@@ -116,6 +116,48 @@ export function drawSphere(ctx, cx, cy, cz, radius, state, color = "#44ccff") {
       drawLine3D(ctx, grid[i][j], grid[i+1][j], state, color + "55");
 }
 
+function pointInPolygon(px, py, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x, yi = pts[i].y;
+    const xj = pts[j].x, yj = pts[j].y;
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi))
+      inside = !inside;
+  }
+  return inside;
+}
+
+function toScreen2D(pts3d, state) {
+  const { zoom, panX, panY, width, height, rotX, rotY } = state;
+  return pts3d.map(p => project(transform(p, rotX, rotY), zoom, panX, panY, width, height));
+}
+
+export function hitTestBox(mx, my, cx, cy, cz, size, state) {
+  const s = size / 2;
+  const v = [
+    {x:-s,y:-s,z:-s},{x:s,y:-s,z:-s},{x:s,y:s,z:-s},{x:-s,y:s,z:-s},
+    {x:-s,y:-s,z:s },{x:s,y:-s,z:s },{x:s,y:s,z:s },{x:-s,y:s,z:s },
+  ].map(p => shifted(p, cx, cy, cz));
+  const faces = [[0,1,2,3],[4,7,6,5],[0,4,5,1],[3,2,6,7],[0,3,7,4],[1,5,6,2]];
+  return faces.some(f => pointInPolygon(mx, my, toScreen2D(f.map(i => v[i]), state)));
+}
+
+export function hitTestPyramid(mx, my, cx, cy, cz, base, height, state) {
+  const s = base / 2;
+  const v = [
+    {x:-s,y:0,z:-s},{x:s,y:0,z:-s},{x:s,y:0,z:s},{x:-s,y:0,z:s},
+    {x:0,y:-height,z:0},
+  ].map(p => shifted(p, cx, cy, cz));
+  const faces = [[0,1,4],[1,2,4],[2,3,4],[3,0,4],[0,3,2,1]];
+  return faces.some(f => pointInPolygon(mx, my, toScreen2D(f.map(i => v[i]), state)));
+}
+
+export function hitTestSphere(mx, my, cx, cy, cz, radius, state) {
+  const { zoom, panX, panY, width, height, rotX, rotY } = state;
+  const sc = project(transform({x:cx,y:cy,z:cz}, rotX, rotY), zoom, panX, panY, width, height);
+  return Math.hypot(mx - sc.x, my - sc.y) < radius * zoom;
+}
+
 const HL = '#ffffffcc';
 
 export function highlightBox(ctx, cx, cy, cz, size, state) {

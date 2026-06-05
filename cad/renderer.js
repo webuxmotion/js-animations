@@ -36,19 +36,9 @@ export function highlightPlane(ctx, type, state) {
   ctx.moveTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
   ctx.closePath();
-  ctx.strokeStyle = colorMap[type];
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = colorMap[type] + '60';
+  ctx.lineWidth = 1;
   ctx.stroke();
-
-  const fill = ctx.createRadialGradient(
-    pts.reduce((s,p)=>s+p.x,0)/4, pts.reduce((s,p)=>s+p.y,0)/4, 0,
-    pts.reduce((s,p)=>s+p.x,0)/4, pts.reduce((s,p)=>s+p.y,0)/4,
-    Math.max(...pts.map(p => Math.hypot(p.x - pts.reduce((s,q)=>s+q.x,0)/4, p.y - pts.reduce((s,q)=>s+q.y,0)/4)))
-  );
-  fill.addColorStop(0, colorMap[type] + '22');
-  fill.addColorStop(1, colorMap[type] + '08');
-  ctx.fillStyle = fill;
-  ctx.fill();
 }
 
 export function drawGridPlane(ctx, type, state) {
@@ -88,6 +78,32 @@ export function drawGridPlane(ctx, type, state) {
   ctx.strokeStyle = color + "40";
   ctx.lineWidth = 1.5;
   ctx.stroke();
+}
+
+function pointInPolygon(px, py, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x, yi = pts[i].y;
+    const xj = pts[j].x, yj = pts[j].y;
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi))
+      inside = !inside;
+  }
+  return inside;
+}
+
+export function hitTestPlane(mx, my, state, planeVisible = {}) {
+  const { zoom, panX, panY, width, height, rotX, rotY } = state;
+  const S = GRID_SIZE;
+  for (const [type, corners] of Object.entries(PLANE_CORNERS)) {
+    if (planeVisible[type] === false) continue;
+    const pts = corners.map(p => {
+      const scaled = { x: p.x * S, y: p.y * S, z: p.z * S };
+      const t = transform(scaled, rotX, rotY);
+      return project(t, zoom, panX, panY, width, height);
+    });
+    if (pointInPolygon(mx, my, pts)) return type;
+  }
+  return null;
 }
 
 export function drawPlaneIntersections(ctx, state, visible = { xy: true, xz: true, yz: true }) {

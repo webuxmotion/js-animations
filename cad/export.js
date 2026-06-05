@@ -2,7 +2,13 @@ function sub(a, b) { return { x: a.x-b.x, y: a.y-b.y, z: a.z-b.z }; }
 function cross(a, b) { return { x: a.y*b.z-a.z*b.y, y: a.z*b.x-a.x*b.z, z: a.x*b.y-a.y*b.x }; }
 function norm(v) { const l = Math.sqrt(v.x*v.x+v.y*v.y+v.z*v.z); return l>0?{x:v.x/l,y:v.y/l,z:v.z/l}:{x:0,y:1,z:0}; }
 
+// App uses Y-down / Z-into-screen; STL viewers expect Y-up / Z-out.
+// A 180° rotation around X (negate Y and Z) maps one to the other
+// without changing handedness, so winding order and normals stay valid.
+function toStl(p) { return { x: p.x, y: -p.y, z: -p.z }; }
+
 function facet(a, b, c) {
+  a = toStl(a); b = toStl(b); c = toStl(c);
   const n = norm(cross(sub(b,a), sub(c,a)));
   const f = v => `      vertex ${v.x.toFixed(6)} ${v.y.toFixed(6)} ${v.z.toFixed(6)}`;
   return `  facet normal ${n.x.toFixed(6)} ${n.y.toFixed(6)} ${n.z.toFixed(6)}\n    outer loop\n${f(a)}\n${f(b)}\n${f(c)}\n    endloop\n  endfacet`;
