@@ -13,16 +13,21 @@
         <option value="style2">Dopamine Style</option>
         <option value="style3">Reversal Pan</option>
       </select>
-      <button id="theme-toggle">Light</button>
-      <button id="record">Record</button>
+      <button id="sketch">Sketch</button>
+      <button id="extrude">Extrude</button>
     </div>
     <div class="plane-tree">
+      <div id="sketch-hint" class="sketch-hint"></div>
       <div class="plane-tree-title">Planes</div>
       <ul>
         <li class="plane-item" data-plane="xy"><span class="dot" style="background:#4a90e2"></span>Front<button class="plane-vis" data-plane="xy"></button></li>
         <li class="plane-item" data-plane="xz"><span class="dot" style="background:#e24a4a"></span>Top<button class="plane-vis" data-plane="xz"></button></li>
         <li class="plane-item" data-plane="yz"><span class="dot" style="background:#4ae28a"></span>Right<button class="plane-vis" data-plane="yz"></button></li>
       </ul>
+      <div class="plane-tree-title" style="margin-top:6px">Sketches</div>
+      <ul id="sketch-list"></ul>
+      <div class="plane-tree-title" style="margin-top:6px">Extrusions</div>
+      <ul id="extrude-list"></ul>
       <div class="plane-tree-title" style="margin-top:6px">Objects</div>
       <ul>
         <li class="plane-item"><span class="dot" style="background:#e8e8e8"></span>Box<button class="obj-vis" data-obj="box"></button></li>

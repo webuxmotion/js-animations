@@ -115,3 +115,41 @@ export function drawSphere(ctx, cx, cy, cz, radius, state, color = "#44ccff") {
     for (let i = 0; i < lat; i++)
       drawLine3D(ctx, grid[i][j], grid[i+1][j], state, color + "55");
 }
+
+const HL = '#ffffffcc';
+
+export function highlightBox(ctx, cx, cy, cz, size, state) {
+  const s = size / 2;
+  const v = [
+    { x:-s,y:-s,z:-s },{ x:s,y:-s,z:-s },{ x:s,y:s,z:-s },{ x:-s,y:s,z:-s },
+    { x:-s,y:-s,z:s  },{ x:s,y:-s,z:s  },{ x:s,y:s,z:s  },{ x:-s,y:s,z:s  },
+  ].map(p => shifted(p, cx, cy, cz));
+  wireEdges(v, [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]], ctx, state, HL);
+}
+
+export function highlightPyramid(ctx, cx, cy, cz, base, height, state) {
+  const s = base / 2;
+  const v = [
+    { x:-s,y:0,z:-s },{ x:s,y:0,z:-s },{ x:s,y:0,z:s },{ x:-s,y:0,z:s },
+    { x:0,y:-height,z:0 },
+  ].map(p => shifted(p, cx, cy, cz));
+  wireEdges(v, [[0,1],[1,2],[2,3],[3,0],[0,4],[1,4],[2,4],[3,4]], ctx, state, HL);
+}
+
+export function highlightSphere(ctx, cx, cy, cz, radius, state) {
+  const lat = 6, lon = 10;
+  const grid = [];
+  for (let i = 0; i <= lat; i++) {
+    const phi = (i / lat) * Math.PI;
+    const row = [];
+    for (let j = 0; j <= lon; j++) {
+      const theta = (j / lon) * Math.PI * 2;
+      row.push(shifted({ x:Math.sin(phi)*Math.cos(theta)*radius, y:Math.cos(phi)*radius, z:Math.sin(phi)*Math.sin(theta)*radius }, cx, cy, cz));
+    }
+    grid.push(row);
+  }
+  for (let i = 1; i < lat; i++)
+    for (let j = 0; j < lon; j++) drawLine3D(ctx, grid[i][j], grid[i][j+1], state, HL);
+  for (let j = 0; j < lon; j++)
+    for (let i = 0; i < lat; i++) drawLine3D(ctx, grid[i][j], grid[i+1][j], state, HL);
+}

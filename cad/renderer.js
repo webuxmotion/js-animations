@@ -18,6 +18,39 @@ export function drawLine3D(ctx, a, b, state, color = "#aaa") {
   ctx.stroke();
 }
 
+const PLANE_CORNERS = {
+  xy: [{ x: -1, y: -1, z: 0 }, { x: 1, y: -1, z: 0 }, { x: 1, y: 1, z: 0 }, { x: -1, y: 1, z: 0 }],
+  xz: [{ x: -1, y: 0, z: -1 }, { x: 1, y: 0, z: -1 }, { x: 1, y: 0, z: 1 }, { x: -1, y: 0, z: 1 }],
+  yz: [{ x: 0, y: -1, z: -1 }, { x: 0, y: 1, z: -1 }, { x: 0, y: 1, z: 1 }, { x: 0, y: -1, z: 1 }],
+};
+
+export function highlightPlane(ctx, type, state) {
+  const { zoom, panX, panY, width, height, rotX, rotY } = state;
+  const colorMap = { xy: COLOR_XY, xz: COLOR_XZ, yz: COLOR_YZ };
+  const pts = PLANE_CORNERS[type].map(p => {
+    const scaled = { x: p.x * GRID_SIZE, y: p.y * GRID_SIZE, z: p.z * GRID_SIZE };
+    const t = transform(scaled, rotX, rotY);
+    return project(t, zoom, panX, panY, width, height);
+  });
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = colorMap[type];
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const fill = ctx.createRadialGradient(
+    pts.reduce((s,p)=>s+p.x,0)/4, pts.reduce((s,p)=>s+p.y,0)/4, 0,
+    pts.reduce((s,p)=>s+p.x,0)/4, pts.reduce((s,p)=>s+p.y,0)/4,
+    Math.max(...pts.map(p => Math.hypot(p.x - pts.reduce((s,q)=>s+q.x,0)/4, p.y - pts.reduce((s,q)=>s+q.y,0)/4)))
+  );
+  fill.addColorStop(0, colorMap[type] + '22');
+  fill.addColorStop(1, colorMap[type] + '08');
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
 export function drawGridPlane(ctx, type, state) {
   const { zoom, panX, panY, width, height, rotX, rotY } = state;
   const S = GRID_SIZE;

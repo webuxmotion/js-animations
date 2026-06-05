@@ -6,7 +6,6 @@ body {
   margin: 0;
   min-height: 100vh;
   background: #0d1117;
-  transition: background 0.25s;
 }
 
 canvas {
@@ -41,6 +40,29 @@ canvas {
 .ui-bar button:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Sketch ──────────────────────────────────────── */
+.ui-bar button.active {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.35);
+  color: #fff;
+}
+
+
+.sketch-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  padding: 6px 12px 2px;
+}
+
+.sketch-hint:empty { display: none; }
+
+
+.plane-item.sketch-target {
+  outline: 1px solid currentColor;
+  outline-offset: -2px;
+  border-radius: 4px;
 }
 
 /* ── Plane tree ──────────────────────────────────── */
@@ -119,41 +141,3 @@ canvas {
   opacity: 0.85;
 }
 
-/* ── Light theme ─────────────────────────────────── */
-body.light {
-  background: #f0f2f5;
-}
-
-body.light .ui-bar select,
-body.light .ui-bar button {
-  background: rgba(0, 0, 0, 0.05);
-  color: rgba(0, 0, 0, 0.65);
-  border-color: rgba(0, 0, 0, 0.14);
-}
-
-body.light .ui-bar select:hover,
-body.light .ui-bar button:hover {
-  background: rgba(0, 0, 0, 0.10);
-  border-color: rgba(0, 0, 0, 0.25);
-}
-
-body.light .plane-tree {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.12);
-  color: rgba(0,0,0,0.55);
-}
-
-body.light .plane-tree-title {
-  color: rgba(0,0,0,0.35);
-  border-color: rgba(0,0,0,0.1);
-}
-
-body.light .plane-item:hover {
-  background: rgba(0,0,0,0.06);
-  color: rgba(0,0,0,0.85);
-}
-
-body.light .plane-item.active {
-  background: rgba(0,0,0,0.08);
-  color: rgba(0,0,0,0.9);
-}
