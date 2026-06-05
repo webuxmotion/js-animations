@@ -43,6 +43,82 @@ canvas {
   border-color: rgba(255, 255, 255, 0.25);
 }
 
+/* ── Plane tree ──────────────────────────────────── */
+.plane-tree {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px;
+  padding: 8px 0 6px;
+  min-width: 110px;
+  font-family: monospace;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  user-select: none;
+}
+
+.plane-tree-title {
+  padding: 0 12px 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.35);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 4px;
+}
+
+.plane-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plane-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.plane-vis, .obj-vis {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.35;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.15s;
+}
+
+.plane-vis:hover, .obj-vis:hover { opacity: 0.9; }
+.plane-vis.hidden, .obj-vis.hidden { opacity: 0.2; }
+
+.plane-item:hover {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.9);
+}
+
+.plane-item.active {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
 /* ── Light theme ─────────────────────────────────── */
 body.light {
   background: #f0f2f5;
@@ -59,4 +135,25 @@ body.light .ui-bar select:hover,
 body.light .ui-bar button:hover {
   background: rgba(0, 0, 0, 0.10);
   border-color: rgba(0, 0, 0, 0.25);
+}
+
+body.light .plane-tree {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.12);
+  color: rgba(0,0,0,0.55);
+}
+
+body.light .plane-tree-title {
+  color: rgba(0,0,0,0.35);
+  border-color: rgba(0,0,0,0.1);
+}
+
+body.light .plane-item:hover {
+  background: rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.85);
+}
+
+body.light .plane-item.active {
+  background: rgba(0,0,0,0.08);
+  color: rgba(0,0,0,0.9);
 }

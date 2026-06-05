@@ -1,7 +1,7 @@
 export function createCamera() {
   const state = {
-    rotX: 0.6,
-    rotY: 0.8,
+    rotX: 0.25,
+    rotY: 0.5,
     zoom: 1,
     panX: 0,
     panY: 0,

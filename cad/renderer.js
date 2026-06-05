@@ -19,18 +19,69 @@ export function drawLine3D(ctx, a, b, state, color = "#aaa") {
 }
 
 export function drawGridPlane(ctx, type, state) {
-  for (let i = -GRID_SIZE; i <= GRID_SIZE; i += GRID_STEP) {
-    if (type === "xy") {
-      drawLine3D(ctx, { x: i, y: -GRID_SIZE, z: 0 }, { x: i, y: GRID_SIZE, z: 0 }, state, COLOR_XY);
-      drawLine3D(ctx, { x: -GRID_SIZE, y: i, z: 0 }, { x: GRID_SIZE, y: i, z: 0 }, state, COLOR_XY);
-    }
-    if (type === "xz") {
-      drawLine3D(ctx, { x: i, y: 0, z: -GRID_SIZE }, { x: i, y: 0, z: GRID_SIZE }, state, COLOR_XZ);
-      drawLine3D(ctx, { x: -GRID_SIZE, y: 0, z: i }, { x: GRID_SIZE, y: 0, z: i }, state, COLOR_XZ);
-    }
-    if (type === "yz") {
-      drawLine3D(ctx, { x: 0, y: i, z: -GRID_SIZE }, { x: 0, y: i, z: GRID_SIZE }, state, COLOR_YZ);
-      drawLine3D(ctx, { x: 0, y: -GRID_SIZE, z: i }, { x: 0, y: GRID_SIZE, z: i }, state, COLOR_YZ);
-    }
+  const { zoom, panX, panY, width, height, rotX, rotY } = state;
+  const S = GRID_SIZE;
+
+  const corners3D = {
+    xy: [{ x: -S, y: -S, z: 0 }, { x: S, y: -S, z: 0 }, { x: S, y: S, z: 0 }, { x: -S, y: S, z: 0 }],
+    xz: [{ x: -S, y: 0, z: -S }, { x: S, y: 0, z: -S }, { x: S, y: 0, z: S }, { x: -S, y: 0, z: S }],
+    yz: [{ x: 0, y: -S, z: -S }, { x: 0, y: S, z: -S }, { x: 0, y: S, z: S }, { x: 0, y: -S, z: S }],
+  };
+
+  const colorMap = { xy: COLOR_XY, xz: COLOR_XZ, yz: COLOR_YZ };
+  const color = colorMap[type];
+
+  const pts = corners3D[type].map(p => {
+    const t = transform(p, rotX, rotY);
+    return project(t, zoom, panX, panY, width, height);
+  });
+
+  const cx = pts.reduce((s, p) => s + p.x, 0) / 4;
+  const cy = pts.reduce((s, p) => s + p.y, 0) / 4;
+  const radius = Math.max(...pts.map(p => Math.hypot(p.x - cx, p.y - cy)));
+
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  grad.addColorStop(0, color + "1a");
+  grad.addColorStop(1, color + "04");
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.strokeStyle = color + "40";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+export function drawPlaneIntersections(ctx, state, visible = { xy: true, xz: true, yz: true }) {
+  const S = GRID_SIZE;
+  const axes = [
+    { a: { x: -S, y: 0, z: 0 }, b: { x: S, y: 0, z: 0 }, c1: COLOR_XY, c2: COLOR_XZ, p1: 'xy', p2: 'xz' },
+    { a: { x: 0, y: -S, z: 0 }, b: { x: 0, y: S, z: 0 }, c1: COLOR_XY, c2: COLOR_YZ, p1: 'xy', p2: 'yz' },
+    { a: { x: 0, y: 0, z: -S }, b: { x: 0, y: 0, z: S }, c1: COLOR_XZ, c2: COLOR_YZ, p1: 'xz', p2: 'yz' },
+  ];
+
+  const { zoom, panX, panY, width, height, rotX, rotY } = state;
+
+  for (const { a, b, c1, c2, p1, p2 } of axes) {
+    if (!visible[p1] || !visible[p2]) continue;
+    const pa = project(transform(a, rotX, rotY), zoom, panX, panY, width, height);
+    const pb = project(transform(b, rotX, rotY), zoom, panX, panY, width, height);
+
+    const grad = ctx.createLinearGradient(pa.x, pa.y, pb.x, pb.y);
+    grad.addColorStop(0, c1 + "40");
+    grad.addColorStop(0.5, "#ffffff40");
+    grad.addColorStop(1, c2 + "40");
+
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 }
