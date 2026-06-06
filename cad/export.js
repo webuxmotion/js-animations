@@ -46,8 +46,8 @@ export function extrusionToSTL(ex) {
   const N   = bot.length;
 
   const facets = [
-    ...fan([...bot].reverse()),
-    ...fan(top),
+    ...fan(depth >= 0 ? [...bot].reverse() : [...bot]),
+    ...fan(depth >= 0 ? top : [...top].reverse()),
   ];
   for (let i = 0; i < N; i++) {
     const j = (i+1) % N;
